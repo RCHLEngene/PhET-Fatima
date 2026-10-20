@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemáticas en Juego - PhET 10°B</title>
+    <style>
+        :root {
+            --primary-color: #1a237e; 
+            --secondary-color: #00bcd4; 
+            --accent-color: #ffc107; 
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; min-height: 100vh; }
+        
+        /* --- LOGIN --- */
+        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; background-color: var(--primary-color); padding: 2rem; }
+        .login-box { background: white; padding: 2.5rem; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); text-align: center; }
+        .login-box h2 { margin-top: 0; color: var(--primary-color); }
+        input[type="text"] { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; }
+        .btn-login { background-color: var(--secondary-color); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; font-size: 1.1rem; }
+        .btn-login:hover { background-color: #0097a7; }
+        .role-selection { display: flex; gap: 10px; margin-bottom: 20px; }
+        .role-btn { flex: 1; padding: 10px; border: 2px solid #ccc; background: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: #666;}
+        .role-btn.active { border-color: var(--primary-color); background-color: #e8eaf6; color: var(--primary-color);}
+
+        /* --- INTERFAZ --- */
+        #app-screen { display: none; flex-direction: column; flex: 1; }
+        header { background-color: var(--primary-color); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .user-info { font-size: 0.9rem; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 15px;}
+        nav { background-color: #283593; display: flex; padding: 0 2rem; }
+        nav button { background: none; border: none; color: white; padding: 1rem 2rem; cursor: pointer; font-size: 1rem; }
+        nav button:hover, nav button.active { background-color: var(--secondary-color); font-weight: bold; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; width: 100%; box-sizing: border-box; flex: 1; }
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- MISIONES --- */
+        .mission-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .card { background: white; border-radius: 10px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid var(--secondary-color); }
+        .card h3 { margin-top: 0; color: var(--primary-color); }
+        .btn { background-color: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; transition: background 0.3s;}
+        .btn:hover { background-color: #0d1440; }
+
+        /* --- DASHBOARD --- */
+        .student-dashboard { display: flex; gap: 2rem; margin-bottom: 2rem; }
+        .score-box { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex: 1; text-align: center; }
+        .score-number { font-size: 3rem; font-weight: bold; color: var(--primary-color); margin: 0; }
+        .badge-container { display: flex; gap: 10px; justify-content: center; margin-top: 1rem; flex-wrap: wrap;}
+        .badge { width: 60px; height: 60px; border-radius: 50%; background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 2px dashed #999; opacity: 0.5; transition: all 0.3s; }
+        .badge.unlocked { background-color: var(--accent-color); border: 2px solid #ff9800; opacity: 1; transform: scale(1.1); box-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
+
+        /* --- TABLA DOCENTE --- */
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; margin-top: 1rem;}
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: var(--primary-color); color: white; }
+        tr:hover { background-color: #f1f1f1; }
+
+        /* --- MODAL PHET --- */
+        #sim-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; flex-direction: column; }
+        .sim-header { background: var(--primary-color); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { background: #f44336; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: background 0.3s;}
+        .close-btn:hover { background: #d32f2f; }
+        iframe { flex: 1; border: none; width: 100%; height: 100%; background: white; }
+        .code-display { font-size: 2rem; font-weight: bold; color: var(--secondary-color); background: #e0f7fa; padding: 10px 20px; border-radius: 5px; letter-spacing: 2px; margin-bottom: 1rem; display: inline-block; border: 2px dashed var(--secondary-color);}
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>🎮 Matemáticas en Juego</h2>
+            <p>Red Local PhET - Colegio Fátima</p>
+            <div class="role-selection">
+                <button type="button" class="role-btn active" id="btn-role-est" onclick="setRole('estudiante')">Estudiante</button>
+                <button type="button" class="role-btn" id="btn-role-doc" onclick="setRole('docente')">Docente</button>
+            </div>
+            <input type="text" id="input-nombre" placeholder="Tu Nombre Completo" required>
+            <input type="text" id="input-codigo" placeholder="Código de Sala (Ej: 10B-MAT)" required>
+            <button type="button" class="btn-login" onclick="login()">Ingresar al sistema</button>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div id="app-screen">
+        <header>
+            <h1 class="header-title">🎮 Matemáticas en Juego 10°B</h1>
+            <div class="user-info">
+                <span id="display-user">Cargando...</span> | 
+                <a href="#" onclick="logout()" style="color: white; text-decoration: underline;">Salir</a>
+            </div>
+        </header>
+
+        <nav>
+            <button type="button" class="active" id="nav-est" onclick="switchView('estudiante')">Panel Estudiante</button>
+            <button type="button" id="nav-doc" onclick="switchView('docente')" style="display: none;">Sesión Docente</button>
+            <button type="button" id="nav-mis" onclick="switchView('misiones')">Misiones PhET</button>
+        </nav>
+
+        <div class="container">
+            <!-- VISTA ESTUDIANTE -->
+            <section id="view-estudiante" class="view-section active">
+                <h2>Panel del Agente Matemático</h2>
+                <div class="student-dashboard">
+                    <div class="score-box">
+                        <h3>Puntaje Total</h3>
+                        <p class="score-number" id="student-score">0</p>
+                    </div>
+                    <div class="score-box">
+                        <h3>Tus Insignias</h3>
+                        <div class="badge-container">
+                            <div class="badge" id="badge-rectas" title="Detective de Rectas">📈</div>
+                            <div class="badge" id="badge-ecuaciones" title="Equilibrista Algebraico">⚖️</div>
+                            <div class="badge" id="badge-parabolas" title="Cazador de Parábolas">🎯</div>
+                            <div class="badge" id="badge-probabilidad" title="Maestro de Probabilidad">🎲</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VISTA DOCENTE -->
+            <section id="view-docente" class="view-section">
+                <h2>Panel de Control del Docente</h2>
+                <div style="text-align: center;">
+                    <p>Comparte este código con tus estudiantes:</p>
+                    <div class="code-display" id="doc-current-code">---</div>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>Estudiante</th><th>Puntaje</th><th>Insignias</th></tr>
+                    </thead>
+                    <tbody id="tabla-docente">
+                        <tr><td colspan="3" style="text-align:center;">Conectando a la base de datos...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- VISTA MISIONES -->
+            <section id="view-misiones" class="view-section">
+                <h2>Misiones Matemáticas</h2>
+                <p>Selecciona una misión para abrir la simulación PhET.</p>
+                <div class="mission-grid">
+                    <div class="card">
+                        <h3>El Enigma de la Recta</h3>
+                        <p>Simulación: Graphing Lines</p>
+                        <button type="button" class="btn" onclick="abrirSimulacion('rectas', 'graphing-lines', 100)">Iniciar Misión</button>
+                    </div>
+                    <div class="card">
+                        <h3>El Equilibrista Algebraico</h3>
+                        <p>Simulación: Equality Explorer</p>
+                        <button type="button" class="btn" onclick="abrirSimulacion('ecuaciones', 'equality-explorer', 100)">Iniciar Misión</button>
+                    </div>
+                    <div class="card">
+                        <h3>El Cazador de Parábolas</h3>
+                        <p>Simulación: Graphing Quadratics</p>
+                        <button type="button" class="btn" onclick="abrirSimulacion('parabolas', 'graphing-quadratics', 150)">Iniciar Misión</button>
+                    </div>
+                    <div class="card">
+                        <h3>Probabilidad en Juego</h3>
+                        <p>Simulación: Plinko Probability</p>
+                        <button type="button" class="btn" onclick="abrirSimulacion('probabilidad', 'plinko-probability', 200)">Iniciar Misión</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- MODAL SIMULACIÓN -->
+    <div id="sim-modal">
+        <div class="sim-header">
+            <h2 id="sim-title">Simulación PhET</h2>
+            <button type="button" class="close-btn" onclick="cerrarSimulacion()">Finalizar y Ganar Puntos</button>
+        </div>
+        <iframe id="phet-iframe" src=""></iframe>
+    </div>
+
+    <!-- FIREBASE Y LÓGICA -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+        import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC9vxsIRD2jwagQbDySuZHdv5tCQBo_Hw0",
+            authDomain: "phet-fatima.firebaseapp.com",
+            databaseURL: "https://phet-fatima-default-rtdb.firebaseio.com/", // URL de tu base de datos
+            projectId: "phet-fatima",
+            storageBucket: "phet-fatima.firebasestorage.app",
+            messagingSenderId: "622503399587",
+            appId: "1:622503399587:web:e74c627824d9aa6f9b6f16",
+            measurementId: "G-ZVZNYX44QC"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let currentRole = 'estudiante';
+        let currentGroup = '';
+        let currentStudent = '';
+        let currentMission = null;
+        let unsubscribeDocente = null;
+
+        // Hacer funciones globales para los botones HTML
+        window.setRole = setRole;
+        window.login = login;
+        window.logout = logout;
+        window.switchView = switchView;
+        window.abrirSimulacion = abrirSimulacion;
+        window.cerrarSimulacion = cerrarSimulacion;
+
+        function setRole(role) {
+            currentRole = role;
+            document.getElementById('btn-role-est').classList.remove('active');
+            document.getElementById('btn-role-doc').classList.remove('active');
+            if(role === 'estudiante') {
+                document.getElementById('btn-role-est').classList.add('active');
+                document.getElementById('input-nombre').placeholder = "Tu Nombre Completo";
+            } else {
+                document.getElementById('btn-role-doc').classList.add('active');
+                document.getElementById('input-nombre').placeholder = "Nombre del Docente";
+            }
+        }
+
+        function login() {
+            const nombre = document.getElementById('input-nombre').value.trim();
+            const codigo = document.getElementById('input-codigo').value.trim().toUpperCase();
+
+            if(!nombre || !codigo) { alert("Llena todos los campos."); return; }
+
+            currentGroup = codigo;
+            currentStudent = nombre;
+
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'flex';
+            document.getElementById('display-user').innerText = `${currentRole.toUpperCase()}: ${nombre} | Sala: ${codigo}`;
+
+            if(currentRole === 'docente') {
+                document.getElementById('nav-doc').style.display = 'block';
+                switchView('docente');
+                document.getElementById('doc-current-code').innerText = codigo;
+                escucharEstudiantesDocente();
+            } else {
+                document.getElementById('nav-doc').style.display = 'none';
+                switchView('estudiante');
+                escucharEstudiante();
+            }
+        }
+
+        function logout() {
+            if(unsubscribeDocente) unsubscribeDocente();
+            location.reload(); 
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+            
+            if(viewId === 'estudiante') document.getElementById('nav-est').classList.add('active');
+            if(viewId === 'docente') document.getElementById('nav-doc').classList.add('active');
+            if(viewId === 'misiones') document.getElementById('nav-mis').classList.add('active');
+        }
+
+        // --- FIREBASE: ESTUDIANTE ---
+        function escucharEstudiante() {
+            const estudianteRef = ref(db, 'salas/' + currentGroup + '/' + currentStudent);
+            onValue(estudianteRef, (snapshot) => {
+                const est = snapshot.val() || { puntos: 0, insignias: [] };
+                document.getElementById('student-score').innerText = est.puntos;
+                
+                ['rectas', 'ecuaciones', 'parabolas', 'probabilidad'].forEach(b => {
+                    const badgeEl = document.getElementById('badge-' + b);
+                    if(est.insignias && est.insignias.includes(b)) {
+                        badgeEl.classList.add('unlocked');
+                    } else {
+                        badgeEl.classList.remove('unlocked');
+                    }
+                });
+            });
+        }
+
+        // --- FIREBASE: DOCENTE ---
+        function escucharEstudiantesDocente() {
+            const salaRef = ref(db, 'salas/' + currentGroup);
+            unsubscribeDocente = onValue(salaRef, (snapshot) => {
+                const sala = snapshot.val();
+                const tbody = document.getElementById('tabla-docente');
+                tbody.innerHTML = '';
+
+                if (!sala) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Aún no hay estudiantes registrados en esta sala.</td></tr>';
+                    return;
+                }
+
+                for (const nombre in sala) {
+                    const est = sala[nombre];
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${nombre}</strong></td>
+                        <td>${est.puntos} pts</td>
+                        <td>${est.insignias ? est.insignias.length : 0} / 4</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        // --- MISIONES ---
+        function abrirSimulacion(misionId, phetFolder, puntos) {
+            if(currentRole !== 'estudiante') {
+                alert("Solo los estudiantes pueden iniciar misiones.");
+                return;
+            }
+            currentMission = { id: misionId, puntos: puntos };
+            document.getElementById('sim-title').innerText = "Simulación: " + phetFolder.replace('-', ' ').toUpperCase();
+            
+            // URL Oficial de PhET
+            const urlOnline = `https://phet.colorado.edu/sims/html/${phetFolder}/latest/${phetFolder}_es.html`;
+            document.getElementById('phet-iframe').src = urlOnline;
+            document.getElementById('sim-modal').style.display = 'flex';
+        }
+
+        function cerrarSimulacion() {
+            document.getElementById('sim-modal').style.display = 'none';
+            document.getElementById('phet-iframe').src = ''; 
+
+            if(currentMission && currentRole === 'estudiante') {
+                if(confirm("¿Has completado los retos de esta misión? Se guardarán tus puntos e insignias.")) {
+                    const estudianteRef = ref(db, 'salas/' + currentGroup + '/' + currentStudent);
+                    
+                    // Transacción para evitar duplicados si se hace doble clic
+                    runTransaction(estudianteRef, (datos) => {
+                        if (datos === null) datos = { puntos: 0, insignias: [] };
+                        if (!datos.insignias) datos.insignias = [];
+                        
+                        if (!datos.insignias.includes(currentMission.id)) {
+                            datos.insignias.push(currentMission.id);
+                            datos.puntos += currentMission.puntos;
+                        }
+                        return datos;
+                    }).then(() => {
+                        alert(`¡Felicidades! Has completado la misión y ganaste ${currentMission.puntos} puntos.`);
+                    }).catch((error) => {
+                        console.error(error);
+                        alert("Error guardando datos. Revisa tu conexión a internet.");
+                    });
+                    
+                    currentMission = null;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

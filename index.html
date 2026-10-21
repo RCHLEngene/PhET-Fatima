@@ -24,6 +24,7 @@
         .role-selection { display: flex; gap: 10px; margin-bottom: 20px; }
         .role-btn { flex: 1; padding: 10px; border: 2px solid #ccc; background: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: #666;}
         .role-btn.active { border-color: var(--primary-color); background-color: #e8eaf6; color: var(--primary-color);}
+        .practice-check { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 15px; font-size: 0.9rem; color: #555; cursor: pointer;}
 
         /* --- INTERFAZ --- */
         #app-screen { display: none; flex-direction: column; flex: 1; }
@@ -57,14 +58,13 @@
         th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: var(--primary-color); color: white; }
         tr:hover { background-color: #f1f1f1; }
+        .code-display { font-size: 2rem; font-weight: bold; color: var(--secondary-color); background: #e0f7fa; padding: 10px 20px; border-radius: 5px; letter-spacing: 2px; margin-bottom: 1rem; display: inline-block; border: 2px dashed var(--secondary-color);}
 
         /* --- MODAL PHET --- */
         #sim-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; flex-direction: column; }
         .sim-header { background: var(--primary-color); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .close-btn { background: #f44336; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: background 0.3s;}
-        .close-btn:hover { background: #d32f2f; }
+        .close-btn { background: #f44336; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; }
         iframe { flex: 1; border: none; width: 100%; height: 100%; background: white; }
-        .code-display { font-size: 2rem; font-weight: bold; color: var(--secondary-color); background: #e0f7fa; padding: 10px 20px; border-radius: 5px; letter-spacing: 2px; margin-bottom: 1rem; display: inline-block; border: 2px dashed var(--secondary-color);}
     </style>
 </head>
 <body>
@@ -74,27 +74,34 @@
         <div class="login-box">
             <h2>🎮 Matemáticas en Juego</h2>
             <p>Red Local PhET - Colegio Fátima</p>
+            
             <div class="role-selection">
                 <button type="button" class="role-btn active" id="btn-role-est" onclick="setRole('estudiante')">Estudiante</button>
                 <button type="button" class="role-btn" id="btn-role-doc" onclick="setRole('docente')">Docente</button>
             </div>
+            
             <input type="text" id="input-nombre" placeholder="Tu Nombre Completo" required>
             <input type="text" id="input-codigo" placeholder="Código de Sala (Ej: 10B-MAT)" required>
-            <button type="button" class="btn-login" onclick="login()">Ingresar al sistema</button>
+            
+            <label class="practice-check" id="practice-label">
+                <input type="checkbox" id="check-practica" onchange="togglePractica()"> Modo Práctica (Offline / Sin guardar)
+            </label>
+
+            <button type="button" class="btn-login" onclick="login()">Ingresar</button>
         </div>
     </div>
 
     <!-- APP -->
     <div id="app-screen">
         <header>
-            <h1 class="header-title">🎮 Matemáticas en Juego 10°B</h1>
+            <h1 class="header-title">🎮 Matemáticas en Juego</h1>
             <div class="user-info">
                 <span id="display-user">Cargando...</span> | 
                 <a href="#" onclick="logout()" style="color: white; text-decoration: underline;">Salir</a>
             </div>
         </header>
 
-        <nav>
+        <nav id="main-nav">
             <button type="button" class="active" id="nav-est" onclick="switchView('estudiante')">Panel Estudiante</button>
             <button type="button" id="nav-doc" onclick="switchView('docente')" style="display: none;">Sesión Docente</button>
             <button type="button" id="nav-mis" onclick="switchView('misiones')">Misiones PhET</button>
@@ -103,7 +110,7 @@
         <div class="container">
             <!-- VISTA ESTUDIANTE -->
             <section id="view-estudiante" class="view-section active">
-                <h2>Panel del Agente Matemático</h2>
+                <h2 id="student-welcome">Panel del Agente Matemático</h2>
                 <div class="student-dashboard">
                     <div class="score-box">
                         <h3>Puntaje Total</h3>
@@ -130,10 +137,10 @@
                 </div>
                 <table>
                     <thead>
-                        <tr><th>Estudiante</th><th>Puntaje</th><th>Insignias</th></tr>
+                        <tr><th>Estudiante Conectado</th><th>Puntaje</th><th>Insignias</th></tr>
                     </thead>
                     <tbody id="tabla-docente">
-                        <tr><td colspan="3" style="text-align:center;">Conectando a la base de datos...</td></tr>
+                        <tr><td colspan="3" style="text-align:center;">Esperando a los estudiantes...</td></tr>
                     </tbody>
                 </table>
             </section>
@@ -141,7 +148,6 @@
             <!-- VISTA MISIONES -->
             <section id="view-misiones" class="view-section">
                 <h2>Misiones Matemáticas</h2>
-                <p>Selecciona una misión para abrir la simulación PhET.</p>
                 <div class="mission-grid">
                     <div class="card">
                         <h3>El Enigma de la Recta</h3>
@@ -180,12 +186,12 @@
     <!-- FIREBASE Y LÓGICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-        import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+        import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC9vxsIRD2jwagQbDySuZHdv5tCQBo_Hw0",
             authDomain: "phet-fatima.firebaseapp.com",
-            databaseURL: "https://phet-fatima-default-rtdb.firebaseio.com/", // URL de tu base de datos
+            databaseURL: "https://phet-fatima-default-rtdb.firebaseio.com/",
             projectId: "phet-fatima",
             storageBucket: "phet-fatima.firebasestorage.app",
             messagingSenderId: "622503399587",
@@ -200,51 +206,102 @@
         let currentGroup = '';
         let currentStudent = '';
         let currentMission = null;
+        let isPractice = false;
         let unsubscribeDocente = null;
+        let practiceData = { puntos: 0, insignias: [] };
 
-        // Hacer funciones globales para los botones HTML
         window.setRole = setRole;
         window.login = login;
         window.logout = logout;
         window.switchView = switchView;
         window.abrirSimulacion = abrirSimulacion;
         window.cerrarSimulacion = cerrarSimulacion;
+        window.togglePractica = togglePractica;
+
+        function togglePractica() {
+            const check = document.getElementById('check-practica').checked;
+            const inputCodigo = document.getElementById('input-codigo');
+            if(check) {
+                inputCodigo.value = 'PRACTICA';
+                inputCodigo.disabled = true;
+            } else {
+                inputCodigo.value = '';
+                inputCodigo.disabled = false;
+            }
+        }
 
         function setRole(role) {
             currentRole = role;
             document.getElementById('btn-role-est').classList.remove('active');
             document.getElementById('btn-role-doc').classList.remove('active');
+            
             if(role === 'estudiante') {
                 document.getElementById('btn-role-est').classList.add('active');
                 document.getElementById('input-nombre').placeholder = "Tu Nombre Completo";
+                document.getElementById('practice-label').style.display = 'flex';
             } else {
                 document.getElementById('btn-role-doc').classList.add('active');
-                document.getElementById('input-nombre').placeholder = "Nombre del Docente";
+                document.getElementById('input-nombre').placeholder = "Nombre del Docente (Ej: Prof. Roberto)";
+                document.getElementById('practice-label').style.display = 'none';
+                document.getElementById('check-practica').checked = false;
+                togglePractica();
             }
         }
 
-        function login() {
+        async function login() {
             const nombre = document.getElementById('input-nombre').value.trim();
             const codigo = document.getElementById('input-codigo').value.trim().toUpperCase();
+            isPractice = document.getElementById('check-practica').checked && currentRole === 'estudiante';
 
-            if(!nombre || !codigo) { alert("Llena todos los campos."); return; }
+            if(!nombre) { alert("Por favor, ingresa tu nombre."); return; }
+            if(!isPractice && !codigo) { alert("Ingresa el código de la sala o activa el Modo Práctica."); return; }
 
-            currentGroup = codigo;
+            currentGroup = isPractice ? 'PRACTICA' : codigo;
             currentStudent = nombre;
 
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'flex';
-            document.getElementById('display-user').innerText = `${currentRole.toUpperCase()}: ${nombre} | Sala: ${codigo}`;
+            document.getElementById('display-user').innerText = `${currentRole.toUpperCase()}: ${nombre} ${isPractice ? '| Práctica' : '| Sala: ' + currentGroup}`;
 
             if(currentRole === 'docente') {
                 document.getElementById('nav-doc').style.display = 'block';
                 switchView('docente');
-                document.getElementById('doc-current-code').innerText = codigo;
+                document.getElementById('doc-current-code').innerText = currentGroup;
+                
+                // 1. GUARDAR EL NOMBRE DEL DOCENTE EN LA BASE DE DATOS
+                try {
+                    await set(ref(db, 'salas/' + currentGroup + '/profesor'), nombre);
+                } catch(e) { console.error("Error guardando docente:", e); }
+                
+                // 2. ESCUCHAR LA LISTA DE ESTUDIANTES
                 escucharEstudiantesDocente();
             } else {
                 document.getElementById('nav-doc').style.display = 'none';
                 switchView('estudiante');
-                escucharEstudiante();
+                
+                if(isPractice) {
+                    document.getElementById('student-welcome').innerText = "Modo Práctica Libre (No se guardan datos)";
+                    actualizarVistaEstudianteLocal();
+                } else {
+                    // 1. LEER EL NOMBRE DEL DOCENTE
+                    const profRef = ref(db, 'salas/' + currentGroup + '/profesor');
+                    onValue(profRef, (snap) => {
+                        const profe = snap.val();
+                        document.getElementById('student-welcome').innerText = profe ? `Agente en la clase del Prof. ${profe}` : `Agente Matemático (Sala ${currentGroup})`;
+                    });
+
+                    // 2. REGISTRAR AL ESTUDIANTE EN LA SALA (Para que el docente lo vea)
+                    const estRef = ref(db, 'salas/' + currentGroup + '/estudiantes/' + currentStudent);
+                    try {
+                        const snap = await get(estRef);
+                        if (!snap.exists()) {
+                            await set(estRef, { puntos: 0, insignias: [] });
+                        }
+                    } catch(e) { console.error("Error registrando estudiante:", e); }
+
+                    // 3. ESCUCHAR LOS PUNTAJES DEL ESTUDIANTE
+                    escucharEstudiante();
+                }
             }
         }
 
@@ -257,40 +314,42 @@
             document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
-            
             if(viewId === 'estudiante') document.getElementById('nav-est').classList.add('active');
             if(viewId === 'docente') document.getElementById('nav-doc').classList.add('active');
             if(viewId === 'misiones') document.getElementById('nav-mis').classList.add('active');
         }
 
-        // --- FIREBASE: ESTUDIANTE ---
+        function actualizarVistaEstudianteLocal() {
+            document.getElementById('student-score').innerText = practiceData.puntos;
+            ['rectas', 'ecuaciones', 'parabolas', 'probabilidad'].forEach(b => {
+                const badgeEl = document.getElementById('badge-' + b);
+                if(practiceData.insignias.includes(b)) badgeEl.classList.add('unlocked');
+                else badgeEl.classList.remove('unlocked');
+            });
+        }
+
         function escucharEstudiante() {
-            const estudianteRef = ref(db, 'salas/' + currentGroup + '/' + currentStudent);
+            const estudianteRef = ref(db, 'salas/' + currentGroup + '/estudiantes/' + currentStudent);
             onValue(estudianteRef, (snapshot) => {
                 const est = snapshot.val() || { puntos: 0, insignias: [] };
                 document.getElementById('student-score').innerText = est.puntos;
-                
                 ['rectas', 'ecuaciones', 'parabolas', 'probabilidad'].forEach(b => {
                     const badgeEl = document.getElementById('badge-' + b);
-                    if(est.insignias && est.insignias.includes(b)) {
-                        badgeEl.classList.add('unlocked');
-                    } else {
-                        badgeEl.classList.remove('unlocked');
-                    }
+                    if(est.insignias && est.insignias.includes(b)) badgeEl.classList.add('unlocked');
+                    else badgeEl.classList.remove('unlocked');
                 });
             });
         }
 
-        // --- FIREBASE: DOCENTE ---
         function escucharEstudiantesDocente() {
-            const salaRef = ref(db, 'salas/' + currentGroup);
+            const salaRef = ref(db, 'salas/' + currentGroup + '/estudiantes');
             unsubscribeDocente = onValue(salaRef, (snapshot) => {
                 const sala = snapshot.val();
                 const tbody = document.getElementById('tabla-docente');
                 tbody.innerHTML = '';
 
                 if (!sala) {
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Aún no hay estudiantes registrados en esta sala.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Esperando a los estudiantes...</td></tr>';
                     return;
                 }
 
@@ -307,46 +366,52 @@
             });
         }
 
-        // --- MISIONES ---
         function abrirSimulacion(misionId, phetFolder, puntos) {
-            if(currentRole !== 'estudiante') {
-                alert("Solo los estudiantes pueden iniciar misiones.");
-                return;
-            }
+            if(currentRole !== 'estudiante') { alert("Solo estudiantes."); return; }
             currentMission = { id: misionId, puntos: puntos };
             document.getElementById('sim-title').innerText = "Simulación: " + phetFolder.replace('-', ' ').toUpperCase();
-            
-            // URL Oficial de PhET
             const urlOnline = `https://phet.colorado.edu/sims/html/${phetFolder}/latest/${phetFolder}_es.html`;
             document.getElementById('phet-iframe').src = urlOnline;
             document.getElementById('sim-modal').style.display = 'flex';
         }
 
-        function cerrarSimulacion() {
+        async function cerrarSimulacion() {
             document.getElementById('sim-modal').style.display = 'none';
             document.getElementById('phet-iframe').src = ''; 
 
             if(currentMission && currentRole === 'estudiante') {
                 if(confirm("¿Has completado los retos de esta misión? Se guardarán tus puntos e insignias.")) {
-                    const estudianteRef = ref(db, 'salas/' + currentGroup + '/' + currentStudent);
                     
-                    // Transacción para evitar duplicados si se hace doble clic
-                    runTransaction(estudianteRef, (datos) => {
-                        if (datos === null) datos = { puntos: 0, insignias: [] };
+                    if(isPractice) {
+                        if (!practiceData.insignias.includes(currentMission.id)) {
+                            practiceData.insignias.push(currentMission.id);
+                            practiceData.puntos += currentMission.puntos;
+                            actualizarVistaEstudianteLocal();
+                            alert(`¡Práctica completada! Ganaste ${currentMission.puntos} puntos.`);
+                        } else {
+                            alert("Ya habías completado esta misión en práctica.");
+                        }
+                        currentMission = null;
+                        return;
+                    }
+
+                    const estudianteRef = ref(db, 'salas/' + currentGroup + '/estudiantes/' + currentStudent);
+                    try {
+                        const snapshot = await get(estudianteRef);
+                        let datos = snapshot.val() || { puntos: 0, insignias: [] };
                         if (!datos.insignias) datos.insignias = [];
-                        
+
                         if (!datos.insignias.includes(currentMission.id)) {
                             datos.insignias.push(currentMission.id);
                             datos.puntos += currentMission.puntos;
                         }
-                        return datos;
-                    }).then(() => {
-                        alert(`¡Felicidades! Has completado la misión y ganaste ${currentMission.puntos} puntos.`);
-                    }).catch((error) => {
-                        console.error(error);
-                        alert("Error guardando datos. Revisa tu conexión a internet.");
-                    });
-                    
+
+                        await set(estudianteRef, datos);
+                        alert(`¡Felicidades! Has ganado ${currentMission.puntos} puntos.`);
+                    } catch (error) {
+                        console.error("Error Firebase:", error);
+                        alert("⚠️ Error guardando. Revisa las Reglas de Firebase (deben estar en 'true').");
+                    }
                     currentMission = null;
                 }
             }
